@@ -1,0 +1,20 @@
+{
+    "Resnet50_Arc_loss": {
+        "Hi_Siri": 0.7
+    },
+    "TCResnet14_Arc_loss": {
+        "Hi_Siri": 0.78
+    },
+    "TDResNeXt_SP2_loss": {
+        "Hi_Siri": 0.81
+    },
+    "TCResNet14": {
+        "Hi_Siri": 0.85
+    },
+    "EfficientNet": {
+        "Hi_Siri": 0.85
+    },
+    "TCResnet_Arc_loss": {
+        "Hi_Siri": 0.78
+    }
+}
