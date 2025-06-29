@@ -1,8 +1,12 @@
 import os
 from pcov_kws.streams import SimpleMicStream
 from pcov_kws.engine import HotwordDetector, MultiHotwordDetector
-from pcov_kws.audio_processing import Resnet50_Arc_loss
+from pcov_kws.audio_processing import Resnet50_Arc_loss, TDResNeXt_SP2_loss
 from pcov_kws import samples_loc
+from pcov_kws.audio_processing import (
+    ModelType,
+    MODEL_TYPE_MAPPER
+)
 import random
 import numpy as np
 import soundfile as sf
@@ -12,35 +16,34 @@ SAMPLE_RATE = 16000
 AUDIO_WINDOW = 1.5 #seconds
 AUDIO_LENGTH = int(AUDIO_WINDOW * SAMPLE_RATE)
 
-base_model = Resnet50_Arc_loss()
+base_model = TDResNeXt_SP2_loss()
 
-mycroft_hw = HotwordDetector(
-    hotword="mycroft",
-    model = base_model,
-    reference_file="pcov_kws/sample_refs/resarc/mycroft.json",
-    threshold=0.7,
-    relaxation_time=2
-)
+model_key = None
+for key, value in MODEL_TYPE_MAPPER.items():
+    if isinstance(base_model, value):
+        model_key = key
+        break
+hotwords = ["mycroft", "lights_on", "lights_off"]
 
-lights_on = HotwordDetector(
-    hotword="lights_on",
-    model = base_model,
-    reference_file="pcov_kws/sample_refs/resarc/lights_on.json",
-    threshold=0.7,
-    relaxation_time=2    
-)
+# 可选参数配置，方便后续扩展
+hotword_params = {
+    "threshold": 0.8,
+    "relaxation_time": 1.2
+}
 
-
-lights_off = HotwordDetector(
-    hotword="lights_off",
-    model = base_model,
-    reference_file="pcov_kws/sample_refs/resarc/lights_off.json",
-    threshold=0.7,
-    relaxation_time=2    
-)
+# 动态创建所有 HotwordDetector 实例
+hotword_detectors = []
+for hotword in hotwords:
+    detector = HotwordDetector(
+        hotword=hotword,
+        model=base_model,
+        reference_file=os.path.join(samples_loc, model_key, f"{hotword}.json"),
+        **hotword_params
+    )
+    hotword_detectors.append(detector)
 
 multi_hotword_detector = MultiHotwordDetector(
-    [mycroft_hw, lights_on, lights_off],
+    hotword_detectors,
     model=base_model,
     continuous=True,
 )
