@@ -220,7 +220,16 @@ if updated_wake_thresholds != st.session_state.wake_word_thresholds:
     st.session_state.wake_word_thresholds = updated_wake_thresholds
     save_thresholds(WAKE_THRESHOLDS_FILE, st.session_state.wake_word_thresholds, model_key)
 
-relaxation_time = st.sidebar.slider('间隔时间（过短可能导致检测效果不佳）', min_value=0.1, max_value=5.0, value=1.2, step=0.1)
+relaxation_time = st.sidebar.slider('间隔时间（过短可能导致检测效果不佳）', min_value=0.1, max_value=5.0, value=2.0, step=0.1)
+
+debounce_time = st.sidebar.slider(
+    '触发后去抖时间（秒）',
+    min_value=0.1,
+    max_value=3.0,
+    value=0.5,
+    step=0.1,
+    help="在一次成功触发后，必须经过此设定的时间才能再次触发。可有效防止单次发音被识别为两次。"
+)
 
 # VAD Toggle
 use_vad = st.sidebar.checkbox("启用语音活动检测 (VAD)", value=True, disabled=not VAD_ENABLED)
@@ -385,6 +394,7 @@ mic_stream.start_stream()
 st.write(f"当前唤醒词：  {', '.join([d.hotword for d in detector.detector_collection]) if isinstance(detector, MultiHotwordDetector) else detector.hotword}")
 res_placeholder = st.empty()
 instruction_placeholder = st.empty()  # Create new placeholder for displaying instructions
+last_trigger_timestamp = 0 # Initialize timestamp for debouncing
 
 while True:
     if not current_detector.is_running:
@@ -460,30 +470,34 @@ while True:
     if process_frame: # Only process if VAD allows or is disabled
         if not wake_word_detected:
             if current_detector: # Check if detector exists
+                match_found = False
+                result = None
+                detected_hotword = ""
                 # For MultiHotwordDetector, use findBestMatch instead of scoreFrame
                 if isinstance(current_detector, MultiHotwordDetector):
                     result = current_detector.findBestMatch(frame)
                     if result and result[0] is not None:
-                        print(result)
-                        wake_word_detected = True
-                        instruction_placeholder.text(f"你好，唤醒词 {result[0].hotword} 已激活，请告诉我要做什么")
-                        # Switch detector only if command_detector is valid
-                        if command_detector:
-                            current_detector = command_detector
-                            current_detector.start()
-                            last_command_time = time.time()
-                            # Reset VAD state after wake word is detected
-                            if use_vad and vad_model is not None:
-                                vad_model.reset_states()
-                        else:
-                            instruction_placeholder.text("唤醒成功，但未配置命令词。")
+                        match_found = True
+                        detected_hotword = result[0].hotword
                 else:
                     # Single wake word detector
                     result = current_detector.scoreFrame(frame)
                     if result is not None and result["match"]:
+                        match_found = True
+                        detected_hotword = current_detector.hotword
+                
+                if match_found:
+                    current_time = time.time()
+                    if current_time - last_trigger_timestamp > debounce_time:
+                        last_trigger_timestamp = current_time
                         print(result)
                         wake_word_detected = True
-                        instruction_placeholder.text("你好，请告诉我要做什么")
+                        
+                        if isinstance(current_detector, MultiHotwordDetector):
+                            instruction_placeholder.text(f"你好，唤醒词 {detected_hotword} 已激活，请告诉我要做什么")
+                        else:
+                            instruction_placeholder.text("你好，请告诉我要做什么")
+
                         # Switch detector only if command_detector is valid
                         if command_detector:
                             current_detector = command_detector
@@ -499,27 +513,30 @@ while True:
             if current_detector and command_detector: # Ensure we are in command mode
                 result = current_detector.findBestMatch(frame)
                 if result and result[0] is not None: # Check if findBestMatch returned a valid result
-                    print(result)
-                    # Extract command name more robustly
-                    detected_command_detector = result[0]
-                    detected_command = detected_command_detector.hotword
+                    current_time = time.time()
+                    if current_time - last_trigger_timestamp > debounce_time:
+                        last_trigger_timestamp = current_time
+                        print(result)
+                        # Extract command name more robustly
+                        detected_command_detector = result[0]
+                        detected_command = detected_command_detector.hotword
 
-                    if detected_command in end_command_words:  # Check for end command
-                        wake_word_detected = False
-                        instruction_placeholder.empty()
-                        res_placeholder.empty()
-                        instruction_placeholder.text("已结束，请重新唤醒")
-                        # Switch back to wake word detector
-                        current_detector = detector # detector holds the wake word detector
-                        # Start the wake word detector again - This is crucial
-                        current_detector.start()
-                        # Reset VAD state after conversation ends
-                        if use_vad and vad_model is not None:
-                            vad_model.reset_states()
-                        continue
-                    else:
-                        res_placeholder.text(f'{detected_command}, Confidence {result[1]:0.4f}')
-                        last_command_time = time.time()  # Update time on valid command
+                        if detected_command in end_command_words:  # Check for end command
+                            wake_word_detected = False
+                            instruction_placeholder.empty()
+                            res_placeholder.empty()
+                            instruction_placeholder.text("已结束，请重新唤醒")
+                            # Switch back to wake word detector
+                            current_detector = detector # detector holds the wake word detector
+                            # Start the wake word detector again - This is crucial
+                            current_detector.start()
+                            # Reset VAD state after conversation ends
+                            if use_vad and vad_model is not None:
+                                vad_model.reset_states()
+                            continue
+                        else:
+                            res_placeholder.text(f'{detected_command}, Confidence {result[1]:0.4f}')
+                            last_command_time = time.time()  # Update time on valid command
                 # Explicitly check for timeout regardless of detection result
                 elif last_command_time is not None and time.time() - last_command_time > timeout:
                     # Log timeout for debugging
