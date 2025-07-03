@@ -233,7 +233,7 @@ debounce_time = st.sidebar.slider(
 
 # VAD Toggle
 use_vad = st.sidebar.checkbox("启用语音活动检测 (VAD)", value=True, disabled=not VAD_ENABLED)
-vad_threshold = st.sidebar.slider('VAD 触发阈值', min_value=0.1, max_value=0.9, value=0.25, step=0.05, disabled=not use_vad)
+vad_threshold = st.sidebar.slider('VAD 触发阈值', min_value=0.1, max_value=0.9, value=0.3, step=0.05, disabled=not use_vad)
 
 # ANS Toggle
 use_ans = st.sidebar.checkbox("启用降噪", value=st.session_state.get('use_ans', False))
@@ -388,7 +388,27 @@ current_detector = detector  # Start with the wake word detector
 if current_detector:
     current_detector.start()
 
-mic_stream = SimpleMicStream(window_length_secs=window_length_secs, sliding_window_secs=sliding_window_secs)
+import pyaudio
+
+# 获取当前默认输入设备的信息
+p = pyaudio.PyAudio()
+default_device_index = p.get_default_input_device_info()['index']
+device_info = p.get_device_info_by_index(default_device_index)
+mic_sample_rate = int(device_info['defaultSampleRate'])
+mic_channels = int(device_info['maxInputChannels'])
+p.terminate()
+
+# 打印采样率和通道数，便于调试
+print(f"当前麦克风采样率: {mic_sample_rate}, 通道数: {mic_channels}")
+
+# 使用获取到的采样率和通道数初始化 SimpleMicStream
+mic_stream = SimpleMicStream(
+    window_length_secs=window_length_secs,
+    sliding_window_secs=sliding_window_secs,
+    custom_channels=mic_channels,
+    custom_rate=mic_sample_rate,
+    custom_device_index=default_device_index
+)
 mic_stream.start_stream()
 
 st.write(f"当前唤醒词：  {', '.join([d.hotword for d in detector.detector_collection]) if isinstance(detector, MultiHotwordDetector) else detector.hotword}")

@@ -21,3 +21,5 @@ assets/*
 pcov_kws/sample_refs/*
 !pcov_kws/sample_refs/.gitkeep
 wakewords/*
+
+kaldi_local_infer_test.py

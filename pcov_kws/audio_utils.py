@@ -1,12 +1,53 @@
-import onnxruntime as rt
 import struct
 import numpy as np
 import decimal
 import math
 import logging
 import kaldi_native_fbank as knf
+import random
 
-def compute_fbank_kaldi_native(samples: np.ndarray, sample_rate: int) -> np.ndarray:
+SAMPLE_RATE = 16000
+AUDIO_WINDOW = 1.5 #seconds
+AUDIO_LENGTH = int(AUDIO_WINDOW * SAMPLE_RATE)
+
+def randomCrop(x: np.array, length=16000) -> np.array:
+    assert (x.shape[0] > AUDIO_LENGTH)
+    frontBits = random.randint(0, x.shape[0] - length)
+    return x[frontBits:frontBits + length]
+
+def addPadding(x: np.array, length=16000) -> np.array:
+    assert (x.shape[0] < length)
+    bitCountToBeAdded = length - x.shape[0]
+    frontBits = random.randint(0, bitCountToBeAdded)
+    new_x = np.append(np.zeros(frontBits), x)
+    new_x = np.append(new_x, np.zeros(bitCountToBeAdded - frontBits))
+    return new_x
+
+def removeExistingPadding(x: np.array) -> np.array:
+    lastZeroBitBeforeAudio = 0
+    firstZeroBitAfterAudio = len(x)
+    for i in range(len(x)):
+        if x[i] == 0:
+            lastZeroBitBeforeAudio = i
+        else:
+            break
+    for i in range(len(x) - 1, 1, -1):
+        if x[i] == 0:
+            firstZeroBitAfterAudio = i
+        else:
+            break
+    return x[lastZeroBitBeforeAudio:firstZeroBitAfterAudio]
+
+def fixPaddingIssues(x: np.array) -> np.array:
+    x = removeExistingPadding(x)
+    if (x.shape[0] > AUDIO_LENGTH):
+        return randomCrop(x, length=AUDIO_LENGTH)
+    elif (x.shape[0] < AUDIO_LENGTH):
+        return addPadding(x, length=AUDIO_LENGTH)
+    else:
+        return x
+
+def compute_fbank_kaldi_native(samples: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
     opts = knf.FbankOptions()
     opts.energy_floor = 1.0
     opts.frame_opts.window_type = "hamming"
