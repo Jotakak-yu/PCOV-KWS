@@ -73,8 +73,8 @@ class HotwordDetector:
           
     def scoreFrame(
             self,
-            inp_audio_frame:np.array,
-            unsafe:bool = False) -> float :
+            inp_audio_frame: np.array,
+            unsafe: bool = False) -> Union[dict, None]:
         """
         Converts given audio frame to embedding and checks for similarity
         with given reference file
@@ -102,13 +102,11 @@ class HotwordDetector:
         if (current_time - self.__last_activation_time) < self.relaxation_time:
             return {"match": False, "confidence": 0.0}
 
-        if(not unsafe):
-            upperPoint = max(
-                (
-                    inp_audio_frame/inp_audio_frame.max()
-                )[:RATE//10]
-            )
-            if(upperPoint > 0.2):
+        rms_value = np.sqrt(np.mean(np.square(inp_audio_frame.astype(np.float32))))
+
+        if not unsafe:
+            upperPoint = max((inp_audio_frame/inp_audio_frame.max())[:RATE//10])
+            if upperPoint > 0.2:
                 return None
 
         #assert inp_audio_frame.shape == (RATE,), \
@@ -117,20 +115,18 @@ class HotwordDetector:
         if not self.is_running:
             return None
         else:
-            score = self.scoreVector(
-                self.model.audioToVector(
-                    inp_audio_frame
-                )
-            )
+            score = self.scoreVector(self.model.audioToVector(inp_audio_frame))
             
             is_match = score >= self.threshold
             if is_match:
                 self.__last_activation_time = current_time
 
             return {
-                "match": is_match,
-                "confidence": score
-            }
+                "match": score >= self.threshold,
+                "confidence": score,
+                "rms": rms_value
+        }
+
 
 HotwordDetectorArray = List[HotwordDetector]
 MatchInfo = Tuple[HotwordDetector,float]
