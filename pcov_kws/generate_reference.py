@@ -1,6 +1,6 @@
 """
 Can be run directly in cli 
-python -m pcov_kws.generate_reference --input-dir ./wakewords --output-dir ./pcov_kws/sample_refs --model-type tcarc14
+python -m pcov_kws.generate_reference --input-dir ./wakewords --output-dir ./pcov_kws/sample_refs --model-type tdsp2
 """
 import os , glob
 import numpy as np

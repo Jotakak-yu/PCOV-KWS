@@ -23,7 +23,7 @@ for key, value in MODEL_TYPE_MAPPER.items():
     if isinstance(base_model, value):
         model_key = key
         break
-hotwords = ["mycroft", "lights_on", "lights_off"]
+hotwords = ["Hi_Siri", "OK_Google"]
 
 # 可选参数配置，方便后续扩展
 hotword_params = {
@@ -55,7 +55,6 @@ mic_stream = SimpleMicStream(
 )
 mic_stream.start_stream()
 
-#print("Say ", mycroft_hw.hotword)
 print("Say one hotword among :", " ".join([x.hotword for x in multi_hotword_detector.detector_collection]))
 while True :
     frame = mic_stream.getFrame()

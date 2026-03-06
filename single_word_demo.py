@@ -23,6 +23,7 @@ if model_key is None:
     raise ValueError(f'No corresponding key found for model {base_model} in MODEL_TYPE_MAPPER')
 
 hotword="Hi_Siri"
+
 reference_file = os.path.join(samples_loc, model_key, f"{hotword}.json")
 print(reference_file)
 hisiri_hw = HotwordDetector(
