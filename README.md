@@ -1,6 +1,6 @@
 # PCOV-KWS: Multi-task Learning for Personalized Customizable Open Vocabulary Keyword Spotting
 
-[![code](https://img.shields.io/badge/Github-Code-keygen.svg?logo=github)](https://github.com/Jotakak-yu/PCOV-KWS-Inference) [![arXiv](https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/xxxx.xxxxx)
+[![code](https://img.shields.io/badge/Github-Code-keygen.svg?logo=github)](https://github.com/Jotakak-yu/PCOV-KWS-Inference) [![arXiv](https://img.shields.io/badge/arXiv-uploading-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/xxxx.xxxxx)
 
 We have now released a kws-only version inference framework based on our proposed TDResNeXt backbone. Soon, we will release the full PCOV-KWS model supporting both sv and kws.
 
